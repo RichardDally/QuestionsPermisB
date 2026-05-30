@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     // State
-    let questions = [];
-    let currentQuestionIndex = 0;
+    let bundles = [];
+    let currentBundleIndex = 0;
+    let currentSubIndex = 0;
     let score = 0;
+    let totalPossibleScore = 0;
     
     // Elements
     const screens = {
@@ -73,13 +75,16 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`/api/questions?count=${count}`);
             if (!res.ok) throw new Error("Erreur réseau");
-            questions = await res.json();
+            bundles = await res.json();
             
-            currentQuestionIndex = 0;
+            currentBundleIndex = 0;
+            currentSubIndex = 0;
             score = 0;
             chatMessages.innerHTML = '';
             
-            totalQNumEl.textContent = questions.length;
+            totalPossibleScore = bundles.reduce((acc, b) => acc + b.sub_questions.length, 0);
+            
+            totalQNumEl.textContent = bundles.length;
             updateScoreDisplay();
             
             showScreen('chat');
@@ -95,17 +100,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function askCurrentQuestion() {
-        currentQNumEl.textContent = currentQuestionIndex + 1;
+        currentQNumEl.textContent = currentBundleIndex + 1;
         inputArea.classList.remove('hidden');
         evaluationArea.classList.add('hidden');
         userAnswerInput.value = '';
         userAnswerInput.focus();
 
-        const q = questions[currentQuestionIndex];
-        const themeText = `${q.theme} - ${q.category}`;
+        const bundle = bundles[currentBundleIndex];
+        const sq = bundle.sub_questions[currentSubIndex];
+        
+        const themeText = `N°${bundle.numero} - ${sq.category}`;
         
         await delay(500);
-        appendMessage('bot', q.question, themeText);
+        appendMessage('bot', sq.question, themeText);
     }
 
     function submitAnswer() {
@@ -119,9 +126,10 @@ document.addEventListener('DOMContentLoaded', () => {
         inputArea.classList.add('hidden');
         
         setTimeout(() => {
-            const q = questions[currentQuestionIndex];
+            const bundle = bundles[currentBundleIndex];
+            const sq = bundle.sub_questions[currentSubIndex];
             appendMessage('system', "Réponse officielle :");
-            appendMessage('bot', q.answer);
+            appendMessage('bot', sq.answer);
             
             setTimeout(() => {
                 evaluationArea.classList.remove('hidden');
@@ -140,14 +148,22 @@ document.addEventListener('DOMContentLoaded', () => {
             appendMessage('system', "❌ Pas de point.");
         }
 
-        currentQuestionIndex++;
+        currentSubIndex++;
         
         await delay(1500);
         
-        if (currentQuestionIndex < questions.length) {
+        if (currentSubIndex < bundles[currentBundleIndex].sub_questions.length) {
             askCurrentQuestion();
         } else {
-            endGame();
+            currentBundleIndex++;
+            currentSubIndex = 0;
+            if (currentBundleIndex < bundles.length) {
+                appendMessage('system', "Passage à la série de questions suivante...");
+                await delay(1000);
+                askCurrentQuestion();
+            } else {
+                endGame();
+            }
         }
     }
 
@@ -156,9 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function endGame() {
-        finalScoreDisplay.textContent = `${score}/${questions.length}`;
+        finalScoreDisplay.textContent = `${score}/${totalPossibleScore}`;
         
-        const percentage = score / questions.length;
+        const percentage = score / totalPossibleScore;
         if (percentage >= 0.8) {
             resultMessage.textContent = "Excellent travail ! Vous êtes prêt.";
             finalScoreDisplay.style.color = "var(--success)";

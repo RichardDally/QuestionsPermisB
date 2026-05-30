@@ -8,44 +8,66 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Questions Permis B")
 
-# Load and flatten questions
+# Load questions as bundles
 QUESTIONS_FILE = Path(__file__).parent.parent / "questions.json"
-flattened_questions = []
+bundles = []
 
 def load_questions():
-    global flattened_questions
+    global bundles
     if not QUESTIONS_FILE.exists():
         return
     with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
         for item in data:
-            categories = ["vérification intérieure", "vérification extérieure", "securite_routiere", "premiers_secours"]
-            for cat in categories:
-                if cat in item and item[cat]:
-                    flattened_questions.append({
-                        "theme": cat.replace("_", " ").title(),
-                        "category": "Question",
-                        "question": item[cat].get("question", ""),
-                        "answer": item[cat].get("reponse", ""),
-                        "image": None
+            sub_qs = []
+            
+            for vk in ["vérification intérieure", "vérification extérieure", "vérification"]:
+                if vk in item and item[vk]:
+                    sub_qs.append({
+                        "category": vk.replace("_", " ").title(),
+                        "question": item[vk].get("question", ""),
+                        "answer": item[vk].get("reponse", "")
                     })
+                    break
+                    
+            if "securite_routiere" in item and item["securite_routiere"]:
+                sub_qs.append({
+                    "category": "Sécurité Routière",
+                    "question": item["securite_routiere"].get("question", ""),
+                    "answer": item["securite_routiere"].get("reponse", "")
+                })
+                
+            if "premiers_secours" in item and item["premiers_secours"]:
+                sub_qs.append({
+                    "category": "Premiers Secours",
+                    "question": item["premiers_secours"].get("question", ""),
+                    "answer": item["premiers_secours"].get("reponse", "")
+                })
+                
+            if sub_qs:
+                bundles.append({
+                    "numero": item.get("numero", ""),
+                    "sub_questions": sub_qs
+                })
 
 load_questions()
 
-class QuestionOut(BaseModel):
-    theme: str
+class SubQuestionOut(BaseModel):
     category: str
     question: str
     answer: str
-    image: str | None = None
 
-@app.get("/api/questions", response_model=list[QuestionOut])
+class BundleOut(BaseModel):
+    numero: str
+    sub_questions: list[SubQuestionOut]
+
+@app.get("/api/questions", response_model=list[BundleOut])
 def get_questions(count: int = Query(10, ge=1, le=100)):
-    if count > len(flattened_questions):
-        count = len(flattened_questions)
-    if not flattened_questions:
+    if count > len(bundles):
+        count = len(bundles)
+    if not bundles:
         raise HTTPException(status_code=500, detail="Questions not loaded")
-    return random.sample(flattened_questions, count)
+    return random.sample(bundles, count)
 
 # Serve static files
 STATIC_DIR = Path(__file__).parent / "static"
