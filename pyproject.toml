@@ -1,0 +1,17 @@
+[project]
+name = "questions_permis_b"
+version = "0.0.1"
+description = "Questions officielles pour réussir le permis B"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "requests>=2.31.0",
+    "jinja2>=3.1.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
