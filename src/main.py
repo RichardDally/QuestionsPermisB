@@ -19,16 +19,15 @@ def load_questions():
     with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
         for item in data:
-            theme = item.get("theme", "")
-            categories = ["verification", "securite_routiere", "premiers_secours"]
+            categories = ["vérification intérieure", "vérification extérieure", "securite_routiere", "premiers_secours"]
             for cat in categories:
                 if cat in item and item[cat]:
                     flattened_questions.append({
-                        "theme": theme,
-                        "category": cat.replace("_", " ").title(),
+                        "theme": cat.replace("_", " ").title(),
+                        "category": "Question",
                         "question": item[cat].get("question", ""),
                         "answer": item[cat].get("reponse", ""),
-                        "image": item[cat].get("image")
+                        "image": None
                     })
 
 load_questions()
